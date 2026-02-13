@@ -12,9 +12,6 @@
 #include "Components/TimelineComponent.h"
 #include "AbilitySystemComponent.h"
 #include "Gameplay/GAS/EXOGameplayTags.h"
-#include "Gameplay/GAS/Abilities/GA_Sprint.h"
-#include "Gameplay/GAS/Abilities/GA_Dash.h"
-#include "Gameplay/GAS/Abilities/GA_Afterburner.h"
 
 APlayer_Base::APlayer_Base()
 {
@@ -156,7 +153,9 @@ void APlayer_Base::ShiftPressed()
 {
 	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
 	{
-		ASC->TryActivateAbilityByClass(UGA_Afterburner::StaticClass());
+		FGameplayTagContainer AfterburnerTag;
+		AfterburnerTag.AddTag(EXOTags::State_Movement_Afterburner);
+		ASC->TryActivateAbilitiesByTag(AfterburnerTag);
 	}
 }
 
@@ -166,7 +165,9 @@ void APlayer_Base::Shift()
 	{
 		if (!GetCharacterMovement()->IsFalling() && !GetCharacterMovement()->IsFlying())
 		{
-			ASC->TryActivateAbilityByClass(UGA_Sprint::StaticClass());
+			FGameplayTagContainer SprintTag;
+			SprintTag.AddTag(EXOTags::State_Movement_Sprinting);
+			ASC->TryActivateAbilitiesByTag(SprintTag);
 		}
 	}
 }
@@ -234,7 +235,9 @@ void APlayer_Base::Dash()
 {
 	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
 	{
-		ASC->TryActivateAbilityByClass(UGA_Dash::StaticClass());
+		FGameplayTagContainer DashTag;
+		DashTag.AddTag(EXOTags::State_Movement_Dashing);
+		ASC->TryActivateAbilitiesByTag(DashTag);
 	}
 }
 

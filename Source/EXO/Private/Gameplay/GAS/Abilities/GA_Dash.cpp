@@ -4,6 +4,7 @@
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/GameplayMessageSubsystem.h"
 
 UGA_Dash::UGA_Dash()
 {
@@ -113,6 +114,14 @@ void UGA_Dash::ApplyDashCooldown()
 
 	ASC->AddLooseGameplayTag(EXOTags::State_Cooldown_Dash);
 
+	const float CooldownDuration = Player->DashCooldownDuration;
+
+	// Broadcast cooldown duration to UI
+	FEXOGAMessage Message;
+	Message.Instigator = Player;
+	Message.Duration = CooldownDuration;
+	UGameplayMessageSubsystem::Get(Player).BroadcastMessage(EXOTags::Ability_Dash_Duration_Message, Message);
+
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().SetTimer(
@@ -121,7 +130,7 @@ void UGA_Dash::ApplyDashCooldown()
 			{
 				ASC->RemoveLooseGameplayTag(EXOTags::State_Cooldown_Dash);
 			}),
-			Player->DashCooldownDuration,
+			CooldownDuration,
 			false
 		);
 	}

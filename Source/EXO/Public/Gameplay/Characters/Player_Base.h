@@ -132,4 +132,8 @@ protected:
 	void StopMove();
 
 	void OnLandingMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+	
+public:
+	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 };
