@@ -3,6 +3,7 @@
 #include "Gameplay/Characters/EXOCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Gameplay/GAS/EXOAbilitySystemComponent.h"
+#include "Gameplay/GAS/AttributeSet/HealthAttributeSet.h"
 #include "Abilities/GameplayAbility.h"
 
 AEXOCharacter::AEXOCharacter()
@@ -20,12 +21,15 @@ AEXOCharacter::AEXOCharacter()
 	GetCharacterMovement()->JumpZVelocity = 700.0f;
 	GetCharacterMovement()->AirControl = 0.35f;
 
-	AbilitySystemComponent = CreateDefaultSubobject<UEXOAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	ASC = CreateDefaultSubobject<UEXOAbilitySystemComponent>(TEXT("Ability System Component"));
+	HealthAttributeSet = CreateDefaultSubobject<UHealthAttributeSet>(FName("HealthAttributeSet"));
+
+	ASC->AddAttributeSetSubobject<UHealthAttributeSet>(HealthAttributeSet);
 }
 
 UAbilitySystemComponent* AEXOCharacter::GetAbilitySystemComponent() const
 {
-	return AbilitySystemComponent;
+	return ASC;
 }
 
 void AEXOCharacter::BeginPlay()
@@ -33,13 +37,25 @@ void AEXOCharacter::BeginPlay()
 	Super::BeginPlay();
 }
 
+void AEXOCharacter::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+	EXOPostInitializeComponents();
+
+	ASC->SetNumericAttributeBase(HealthAttributeSet->GetMaxHealthAttribute(), 200.f);
+	ASC->SetNumericAttributeBase(HealthAttributeSet->GetHealthAttribute(), 200.f);
+	ASC->SetNumericAttributeBase(HealthAttributeSet->GetMaxShieldAttribute(), 100.f);
+	ASC->SetNumericAttributeBase(HealthAttributeSet->GetShieldAttribute(), 100.f);
+}
+
 void AEXOCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 
-	if (AbilitySystemComponent)
+	if (ASC)
 	{
-		AbilitySystemComponent->InitAbilityActorInfo(this, this);
+		ASC->InitAbilityActorInfo(this, this);
 
 		if (!bAbilitiesGranted)
 		{
@@ -47,7 +63,7 @@ void AEXOCharacter::PossessedBy(AController* NewController)
 			{
 				if (AbilityClass)
 				{
-					AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AbilityClass, 1, INDEX_NONE, this));
+					ASC->GiveAbility(FGameplayAbilitySpec(AbilityClass, 1, INDEX_NONE, this));
 				}
 			}
 			bAbilitiesGranted = true;

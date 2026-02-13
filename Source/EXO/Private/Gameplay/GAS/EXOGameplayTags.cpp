@@ -3,6 +3,7 @@
 namespace EXOTags
 {
 	UE_DEFINE_GAMEPLAY_TAG(State_Movement_Sprinting, "State.Movement.Sprinting");
+	UE_DEFINE_GAMEPLAY_TAG(State_Movement_Jumping, "State.Movement.Jumping");
 	UE_DEFINE_GAMEPLAY_TAG(State_Movement_Afterburner, "State.Movement.Afterburner");
 	UE_DEFINE_GAMEPLAY_TAG(State_Movement_AfterburnerLanding, "State.Movement.AfterburnerLanding");
 	UE_DEFINE_GAMEPLAY_TAG(State_Movement_Dashing, "State.Movement.Dashing");

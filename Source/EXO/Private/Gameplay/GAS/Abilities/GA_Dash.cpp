@@ -41,12 +41,12 @@ void UGA_Dash::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FG
 	{
 		if (MoveInput.X > 0)
 		{
-			SelectedMontage = Player->DashRightMontage;
+			//SelectedMontage = Player->DashRightMontage;
 			LaunchDir = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 		}
 		else
 		{
-			SelectedMontage = Player->DashLeftMontage;
+			//SelectedMontage = Player->DashLeftMontage;
 			LaunchDir = -FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 		}
 	}
@@ -54,12 +54,12 @@ void UGA_Dash::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FG
 	{
 		if (MoveInput.Y < 0)
 		{
-			SelectedMontage = Player->DashBackwardMontage;
+			//SelectedMontage = Player->DashBackwardMontage;
 			LaunchDir = -FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
 		}
 		else
 		{
-			SelectedMontage = Player->DashForwardMontage;
+			//SelectedMontage = Player->DashForwardMontage;
 			LaunchDir = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
 		}
 	}
@@ -70,7 +70,7 @@ void UGA_Dash::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FG
 		return;
 	}
 
-	Player->LaunchCharacter(LaunchDir * Player->DashLaunchForce, true, true);
+	//Player->LaunchCharacter(LaunchDir * Player->DashLaunchForce, true, true);
 	MoveComp->DisableMovement();
 
 	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
@@ -113,27 +113,6 @@ void UGA_Dash::ApplyDashCooldown()
 	}
 
 	ASC->AddLooseGameplayTag(EXOTags::State_Cooldown_Dash);
-
-	const float CooldownDuration = Player->DashCooldownDuration;
-
-	// Broadcast cooldown duration to UI
-	FEXOGAMessage Message;
-	Message.Instigator = Player;
-	Message.Duration = CooldownDuration;
-	UGameplayMessageSubsystem::Get(Player).BroadcastMessage(EXOTags::Ability_Dash_Duration_Message, Message);
-
-	if (UWorld* World = GetWorld())
-	{
-		World->GetTimerManager().SetTimer(
-			CooldownTimerHandle,
-			FTimerDelegate::CreateWeakLambda(ASC, [ASC]()
-			{
-				ASC->RemoveLooseGameplayTag(EXOTags::State_Cooldown_Dash);
-			}),
-			CooldownDuration,
-			false
-		);
-	}
 }
 
 void UGA_Dash::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)

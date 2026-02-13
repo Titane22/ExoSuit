@@ -37,6 +37,9 @@ void APlayer_Base::BeginPlay()
 	Super::BeginPlay();
 	DefaultMaxWalkSpeed = GetCharacterMovement()->MaxWalkSpeed;
 	DefaultMaxFlySpeed = GetCharacterMovement()->MaxFlySpeed;
+	DefaultArmLength = CameraBoom->TargetArmLength;
+	DefaultCameraLagSpeed = CameraBoom->CameraLagSpeed;
+	SprintTargetArmLength = DefaultArmLength;
 
 	if (CameraTransitionCurve && CameraTimeline)
 	{
@@ -66,9 +69,32 @@ void APlayer_Base::Tick(float DeltaTime)
 	CurrentOffset.Y = FMath::FInterpTo(CurrentOffset.Y, TargetY, DeltaTime, ShoulderSwapSpeed);
 	CameraBoom->SocketOffset = CurrentOffset;
 
+	// Sprint camera: interpolate arm length and manage lag
+	if (bSprintCameraWaiting || bSprintCameraReturning)
+	{
+		CameraBoom->TargetArmLength = FMath::FInterpTo(
+			CameraBoom->TargetArmLength, SprintTargetArmLength, DeltaTime, SprintCameraInterpSpeed);
+
+		if (FMath::IsNearlyEqual(CameraBoom->TargetArmLength, SprintTargetArmLength, 1.0f))
+		{
+			CameraBoom->TargetArmLength = SprintTargetArmLength;
+
+			if (bSprintCameraWaiting)
+			{
+				// Arm reached sprint length — restore camera lag so it follows again
+				bSprintCameraWaiting = false;
+				CameraBoom->CameraLagSpeed = DefaultCameraLagSpeed;
+			}
+			else if (bSprintCameraReturning)
+			{
+				bSprintCameraReturning = false;
+			}
+		}
+	}
+
 	// Afterburner: smoothed look + auto-forward
-	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
-	if (ASC && ASC->HasMatchingGameplayTag(EXOTags::State_Movement_Afterburner) && Controller)
+	UAbilitySystemComponent* ASC_Local = GetAbilitySystemComponent();
+	if (ASC_Local && ASC_Local->HasMatchingGameplayTag(EXOTags::State_Movement_Afterburner) && Controller)
 	{
 		SmoothedAfterburnerLook = FMath::Vector2DInterpTo(SmoothedAfterburnerLook, AfterburnerLookInput, DeltaTime, AfterburnerLookLagSpeed);
 		AddControllerYawInput(SmoothedAfterburnerLook.X);
@@ -93,8 +119,8 @@ void APlayer_Base::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	{
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &APlayer_Base::Move);
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &APlayer_Base::Look);
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ACharacter::Jump);
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &APlayer_Base::Jump);
+		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &APlayer_Base::StopJumping);
 
 		EnhancedInputComponent->BindAction(ShiftAction, ETriggerEvent::Started, this, &APlayer_Base::ShiftPressed);
 		EnhancedInputComponent->BindAction(ShiftAction, ETriggerEvent::Triggered, this, &APlayer_Base::Shift);
@@ -113,8 +139,8 @@ void APlayer_Base::Move(const FInputActionValue& Value)
 	CachedMoveInput = MovementVector;
 	if (!Controller) return;
 
-	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
-	if (ASC && ASC->HasMatchingGameplayTag(EXOTags::State_Movement_Afterburner))
+	UAbilitySystemComponent* ASC_Local = GetAbilitySystemComponent();
+	if (ASC_Local && ASC_Local->HasMatchingGameplayTag(EXOTags::State_Movement_Afterburner))
 	{
 		const FRotator ControlRotation = Controller->GetControlRotation();
 		const FVector RightDir = FRotationMatrix(ControlRotation).GetUnitAxis(EAxis::Y);
@@ -137,8 +163,8 @@ void APlayer_Base::Look(const FInputActionValue& Value)
 	const FVector2D LookAxisVector = Value.Get<FVector2D>();
 	if (!Controller) return;
 
-	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
-	if (ASC && ASC->HasMatchingGameplayTag(EXOTags::State_Movement_Afterburner))
+	UAbilitySystemComponent* ASC_Local = GetAbilitySystemComponent();
+	if (ASC_Local && ASC_Local->HasMatchingGameplayTag(EXOTags::State_Movement_Afterburner))
 	{
 		AfterburnerLookInput = LookAxisVector * AfterburnerLookSensitivityMultiplier;
 	}
@@ -151,35 +177,35 @@ void APlayer_Base::Look(const FInputActionValue& Value)
 
 void APlayer_Base::ShiftPressed()
 {
-	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	if (UAbilitySystemComponent* ASC_Local = GetAbilitySystemComponent())
 	{
 		FGameplayTagContainer AfterburnerTag;
 		AfterburnerTag.AddTag(EXOTags::State_Movement_Afterburner);
-		ASC->TryActivateAbilitiesByTag(AfterburnerTag);
+		ASC_Local->TryActivateAbilitiesByTag(AfterburnerTag);
 	}
 }
 
 void APlayer_Base::Shift()
 {
-	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	if (UAbilitySystemComponent* ASC_Local = GetAbilitySystemComponent())
 	{
 		if (!GetCharacterMovement()->IsFalling() && !GetCharacterMovement()->IsFlying())
 		{
 			FGameplayTagContainer SprintTag;
 			SprintTag.AddTag(EXOTags::State_Movement_Sprinting);
-			ASC->TryActivateAbilitiesByTag(SprintTag);
+			ASC_Local->TryActivateAbilitiesByTag(SprintTag);
 		}
 	}
 }
 
 void APlayer_Base::StopShift()
 {
-	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	if (UAbilitySystemComponent* ASC_Local = GetAbilitySystemComponent())
 	{
 		FGameplayTagContainer GameplayTags;
 		GameplayTags.AddTag(EXOTags::State_Movement_Sprinting);
 		GameplayTags.AddTag(EXOTags::State_Movement_Afterburner);
-		ASC->CancelAbilities(&GameplayTags);
+		ASC_Local->CancelAbilities(&GameplayTags);
 	}
 }
 
@@ -192,8 +218,8 @@ void APlayer_Base::Landed(const FHitResult& Hit)
 {
 	Super::Landed(Hit);
 
-	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
-	if (ASC && ASC->HasMatchingGameplayTag(EXOTags::State_Movement_AfterburnerLanding))
+	UAbilitySystemComponent* ASC_Local = GetAbilitySystemComponent();
+	if (ASC_Local && ASC_Local->HasMatchingGameplayTag(EXOTags::State_Movement_AfterburnerLanding))
 	{
 		if (AfterburnerLandingMontage)
 		{
@@ -208,7 +234,7 @@ void APlayer_Base::Landed(const FHitResult& Hit)
 				return;
 			}
 		}
-		ASC->RemoveLooseGameplayTag(EXOTags::State_Movement_AfterburnerLanding);
+		ASC_Local->RemoveLooseGameplayTag(EXOTags::State_Movement_AfterburnerLanding);
 	}
 }
 
@@ -219,9 +245,9 @@ void APlayer_Base::OnCameraTimelineUpdate(float Value)
 
 void APlayer_Base::OnLandingMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
-	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	if (UAbilitySystemComponent* ASC_Local = GetAbilitySystemComponent())
 	{
-		ASC->RemoveLooseGameplayTag(EXOTags::State_Movement_AfterburnerLanding);
+		ASC_Local->RemoveLooseGameplayTag(EXOTags::State_Movement_AfterburnerLanding);
 	}
 	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
 }
@@ -231,14 +257,51 @@ void APlayer_Base::StopMove()
 	CachedMoveInput = FVector2D::ZeroVector;
 }
 
+void APlayer_Base::Jump()
+{
+	Super::Jump();
+
+	if (UAbilitySystemComponent* ASC_Local = GetAbilitySystemComponent())
+	{
+		ASC_Local->AddLooseGameplayTag(EXOTags::State_Movement_Jumping);
+	}
+
+}
+
+void APlayer_Base::StopJumping()
+{
+	Super::StopJumping();
+
+	if (UAbilitySystemComponent* ASC_Local = GetAbilitySystemComponent())
+	{
+		ASC_Local->RemoveLooseGameplayTag(EXOTags::State_Movement_Jumping);
+	}
+}
+
 void APlayer_Base::Dash()
 {
-	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	if (UAbilitySystemComponent* ASC_Local = GetAbilitySystemComponent())
 	{
 		FGameplayTagContainer DashTag;
 		DashTag.AddTag(EXOTags::State_Movement_Dashing);
-		ASC->TryActivateAbilitiesByTag(DashTag);
+		ASC_Local->TryActivateAbilitiesByTag(DashTag);
 	}
+}
+
+void APlayer_Base::StartSprintCamera()
+{
+	bSprintCameraWaiting = true;
+	bSprintCameraReturning = false;
+	SprintTargetArmLength = DefaultArmLength + SprintCameraArmLengthOffset;
+	CameraBoom->CameraLagSpeed = 0.0f;
+}
+
+void APlayer_Base::StopSprintCamera()
+{
+	bSprintCameraWaiting = false;
+	bSprintCameraReturning = true;
+	SprintTargetArmLength = DefaultArmLength;
+	CameraBoom->CameraLagSpeed = DefaultCameraLagSpeed;
 }
 
 void APlayer_Base::PlayCameraTimeline(bool bForward)

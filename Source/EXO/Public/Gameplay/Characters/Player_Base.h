@@ -25,6 +25,9 @@ public:
 	FVector2D GetCachedMoveInput() const { return CachedMoveInput; }
 	float GetDefaultMaxWalkSpeed() const { return DefaultMaxWalkSpeed; }
 
+	void StartSprintCamera();
+	void StopSprintCamera();
+
 	// Movement parameters (public for GA access)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Sprint")
 	float SprintSpeedMultiplier = 1.3f;
@@ -37,25 +40,6 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Afterburner")
 	UAnimMontage* AfterburnerLandingMontage;
-
-	// Dash parameters (public for GA access)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Dash")
-	UAnimMontage* DashForwardMontage;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Dash")
-	UAnimMontage* DashBackwardMontage;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Dash")
-	UAnimMontage* DashLeftMontage;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Dash")
-	UAnimMontage* DashRightMontage;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Dash")
-	float DashCooldownDuration = 1.5f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Dash")
-	float DashLaunchForce = 1500.0f;
 
 protected:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
@@ -107,6 +91,19 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|Afterburner")
 	float AfterburnerLookLagSpeed = 6.0f;
 
+	// Sprint camera parameters
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|Sprint")
+	float SprintCameraArmLengthOffset = 150.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|Sprint")
+	float SprintCameraInterpSpeed = 3.0f;
+
+	float DefaultArmLength;
+	float DefaultCameraLagSpeed;
+	float SprintTargetArmLength;
+	bool bSprintCameraWaiting = false;
+	bool bSprintCameraReturning = false;
+
 	FVector2D AfterburnerLookInput;
 	FVector2D SmoothedAfterburnerLook;
 	float CameraTimelineAlpha = 0.0f;
@@ -130,7 +127,9 @@ protected:
 	void ShiftCamera();
 	void Dash();
 	void StopMove();
-
+	virtual void Jump() override;
+	virtual void StopJumping() override;
+	
 	void OnLandingMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 	
 public:

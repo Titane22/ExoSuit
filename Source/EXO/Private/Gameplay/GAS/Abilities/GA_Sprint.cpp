@@ -49,15 +49,18 @@ void UGA_Sprint::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const 
 
 	CachedDefaultSpeed = Player->GetDefaultMaxWalkSpeed();
 	MoveComp->MaxWalkSpeed = CachedDefaultSpeed * Player->SprintSpeedMultiplier;
+
+	Player->StartSprintCamera();
 }
 
 void UGA_Sprint::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
 	if (UCharacterMovementComponent* MoveComp = GetMovementComponent())
 	{
-		if (const APlayer_Base* Player = GetPlayerBase())
+		if (APlayer_Base* Player = GetPlayerBase())
 		{
 			MoveComp->MaxWalkSpeed = Player->GetDefaultMaxWalkSpeed();
+			Player->StopSprintCamera();
 		}
 	}
 
